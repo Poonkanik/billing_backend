@@ -14,16 +14,20 @@ connectDB();
 app.use(compression()); // gzip all API responses — 60-80% smaller payloads
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map(s => s.trim())
-  : ['http://localhost:3000', 'http://localhost:5173'];
+  : ['http://localhost:3000', 'http://localhost:5173', 'https://billing-frontend-page.vercel.app'];
 
 app.use(cors({
+  // When credentials:true, the response must echo back the exact requesting
+  // origin — a wildcard '*' is not allowed by the browser in that case.
   origin: (origin, callback) => {
-    // Allow non-browser requests or matching origins, or allow all if wildcard
-    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    // Allow by default to prevent blocking frontend deployments
-    return callback(null, true);
+    // Non-browser requests (curl, Postman, server-to-server) have no origin
+    if (!origin) return callback(null, true);
+    // If CLIENT_URL contains '*', allow all origins
+    if (allowedOrigins.includes('*')) return callback(null, origin);
+    // Reflect the requesting origin if it is in the allow-list
+    if (allowedOrigins.includes(origin)) return callback(null, origin);
+    // Fallback: allow any origin but still echo it back so credentials work
+    return callback(null, origin);
   },
   credentials: true
 }));
