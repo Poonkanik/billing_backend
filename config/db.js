@@ -6,6 +6,8 @@ const connectDB = async () => {
     if (!mongoURI) {
       throw new Error('No MongoDB connection string found. Please set MONGODB_URI or MONGO_URL in your environment variables.');
     }
+    const maskedURI = mongoURI.replace(/:([^@]+)@/, ':****@');
+    console.log(`📡 Connecting to MongoDB: ${maskedURI}`);
     const conn = await mongoose.connect(mongoURI);
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
