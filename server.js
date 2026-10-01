@@ -10,17 +10,37 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
+// ---------------------------------------------------------------------------
+// CORS — must be registered BEFORE all other middleware so that preflight
+// OPTIONS requests get an immediate 204 response with the correct headers.
+// ---------------------------------------------------------------------------
+const ALLOWED_ORIGINS = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+// Always allow localhost variants for local development
+const LOCAL_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    if (LOCAL_PATTERN.test(origin)) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+// Respond to all preflight OPTIONS requests immediately
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
+
 // Middleware
 app.use(compression()); // gzip all API responses — 60-80% smaller payloads
-
-// origin: true tells cors to reflect the request's Origin header back.
-// This is the correct pattern when credentials: true is set, since the
-// browser requires Access-Control-Allow-Origin to exactly match the
-// requesting origin (wildcard '*' is not allowed with credentials).
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
